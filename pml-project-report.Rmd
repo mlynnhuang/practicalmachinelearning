@@ -1,0 +1,138 @@
+---
+title: "Using Machine Learning to Predict the Type of Mistakes in Weight Lifting Exercise"
+author: "Lynn Huang"
+date: "August 8, 2016"
+output: html_document
+---
+
+**Background**
+
+In the weight Lifting Excise, the data was collected for five fashions of performing Unilateral Dumbbell Biceps Curl.
+Class A: exactly according to the specification; Class B: throwing the elbows to the front; Class C: lifting the dumbbell only halfway; Class D: lowering the dumbbell only halfway and Class E: throwing the hips to the front.
+Class A is the correct way, Classes B, C, D, E are the mistakes people usually make. 
+
+**Objective**
+
+The objective of this project is to use machine learning algorithm to create a model to Predict the type of mistakes based on data gathered from a user.
+
+**Load R Package and Data**
+
+```{r,results='hide'}
+library(caret)
+library(rpart)
+library(randomForest)
+trainingData<-read.csv("pml-training.csv",
+                       stringsAsFactors = TRUE)
+testingData<-read.csv("pml-testing.csv",
+                      stringsAsFactors = TRUE)
+```
+
+**Exploring and Preparing Data**
+
+```{r, results='hide'}
+str(trainingData)
+str(testingData)
+
+```
+
+```{r}
+dim(trainingData)
+dim(testingData)
+
+```
+
+There are 19622 obs. of 160 variables (features) in the training set; There are 20 obs. of 160 variables (features) in the training set.  The "classe" variable in the training set is the outcome to predict.
+
+Remove the null,the zero- and near zero-variance Predictors
+
+```{r,results='hide'}
+trainingData <- trainingData[, colSums(is.na(trainingData)) == 0] 
+testingData <- testingData[, colSums(is.na(testingData)) == 0] 
+if (length(nearZeroVar(trainingData)) > 0) {
+  trainingData <- trainingData[, -nearZeroVar(trainingData)] 
+}
+if (length(nearZeroVar(testingData)) > 0) {
+  testingData <- testingData[, -nearZeroVar(testingData)] 
+}
+
+```
+
+
+```{r}
+dim(trainingData)
+dim(testingData)
+
+```
+
+Remove the un-related time and window predictors in the data
+
+```{r}
+features<-names(trainingData[7:58])
+trainingData <- trainingData[,c(features,"classe")]
+testingData <- testingData[,c(features,"problem_id")]
+
+```
+
+**Create training set and testing set for model fitting**
+
+In order to use training data for modeling, testing data for validation, the training data will be sub set into training set and testing set in the modeling/predition process.  The testing data will be used for validation purpose.
+
+
+```{r}
+set.seed(123)
+inTrain = createDataPartition(trainingData$classe, p = 3/4, list = F)
+training = trainingData[inTrain,]
+testing = trainingData[-inTrain,]
+
+```
+
+**Model Selection and Cross Validation**
+
+*Using Decision Tree with CART (rpart)*
+
+```{r}
+
+modFitCART <- rpart(classe ~. , data=training)
+predictionsCART <- predict(modFitCART, testing,type="class")
+confusionMatrix(predictionsCART, testing$classe)
+
+```
+
+
+The out of sample error is 25.1% (since accuracy is 74.86%)
+
+*Use Random Forests for prediction*
+
+```{r}
+modFitRF <- randomForest(classe ~. , data=training)
+predictionsRF <- predict(modFitRF, testing, type = "class")
+confusionMatrix(predictionsRF, testing$classe)
+
+
+```
+
+The out of sample error is 0.5% (since accuracy is 99.5%)
+So, Random Forests is used to predict the validation data (original test set)
+
+**Use Random Forests Model to Predict the Users’ Data (20 Cases for Validation)**
+
+```{r}
+result <- predict(modFitRF, testingData[, -length(names(testingData))])
+print(data.frame(problem_d=testingData$problem_id,result))
+
+```
+
+
+```{r}
+
+
+```
+
+
+```{r}
+
+
+```
+
+Reference: http://groupware.les.inf.puc-rio.br/har#ixzz4Gi0U23Ir
+
